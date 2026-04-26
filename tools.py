@@ -456,3 +456,4 @@ def adj_2_SU2(R):
     nz = R[1,0] - R[0,1]
     n  = [nx, ny, nz] #/ (2*np.sin(theta))
     return expm(n, theta/2)
+
