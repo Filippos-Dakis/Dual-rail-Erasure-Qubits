@@ -1,4 +1,6 @@
+import os
 import numpy as np
+import qutip as qt
 from scipy.special import ellipk, ellipkm1, ellipe, ellipeinc, ellipkinc, ellipj
 
 # COMPLETE elliptic integral of FIRST kind 
@@ -456,4 +458,83 @@ def adj_2_SU2(R):
     nz = R[1,0] - R[0,1]
     n  = [nx, ny, nz] #/ (2*np.sin(theta))
     return expm(n, theta/2)
+
+
+def load_coeffs(filename, fmt='csv', folder='.'):
+    """
+    Load a NumPy array from a .txt or .csv file in a specified folder.
+
+    Inputs:
+            filename: str, without extension (e.g., 'my_data')
+            fmt: 'txt' or 'csv'
+            folder: str, directory path to the file
+
+    Outputs:
+            arr: np.ndarray
+    """
+    extension = 'txt' if fmt == 'txt' else 'csv'
+    full_path = os.path.join(folder, f"{filename}.{extension}")
+
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"File '{full_path}' does not exist.")
+
+    if fmt == 'txt':
+        return np.loadtxt(full_path)
+    elif fmt == 'csv':
+        return np.loadtxt(full_path, delimiter=",")
+    else:
+        raise ValueError("Format must be 'txt' or 'csv'")
+
+
+def calculate_gate_fidelity(u_sim, u_target):
+    """
+    Compute the average gate fidelity between two unitaries (qutip Qobj or array).
+
+    Inputs:
+            u_sim:    simulated unitary
+            u_target: target unitary
+    Outputs:
+            fidelity (scalar <= 1)
+    """
+    u_target = qt.Qobj(u_target)
+    u_sim    = qt.Qobj(u_sim)
+
+    M = (u_target.dag()) * (u_sim)
+
+    unitary_m_check = (M * (M.dag())).tr()
+    unitary_m_tr_sq = (M.tr()) * (M.dag().tr())
+
+    d = M.shape[0]
+    normalization = d * (d + 1)
+
+    return ((unitary_m_check + unitary_m_tr_sq) / normalization).real
+
+
+def read_dict(fname, fmt='csv', folder='pulses'):
+    """
+    Read a .csv/.txt pulse file and unpack its contents.
+
+    Inputs:
+            fname:  str, filename without extension
+            fmt:    'txt' or 'csv'
+            folder: str, directory path to the file
+
+    Outputs:
+            cn:    Fourier coefficients (complex)
+            ampl:  curvature amplitude
+            ct:    constant torsion
+            T_g:   gate time (curve length)
+            speed: curve speed
+    """
+    coeffs = load_coeffs(filename=fname, fmt=fmt, folder=folder)
+    coeffs = list(coeffs)
+    speed  = coeffs.pop()
+    T_g    = coeffs.pop()
+    T_g    = T_g * speed
+    ct     = coeffs.pop()
+    ampl   = coeffs.pop()
+    coeffs = np.array(coeffs)
+    cn     = coeffs[:len(coeffs) // 2] + 1j * coeffs[len(coeffs) // 2:]
+
+    return cn, ampl, ct, T_g, speed
 
