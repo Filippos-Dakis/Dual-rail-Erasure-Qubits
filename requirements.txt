@@ -2,3 +2,5 @@ numpy
 matplotlib
 qutip
 qurveros
+pandas
+openpyxl
